@@ -1,10 +1,11 @@
-#include <iostream>
+#include <gtest/gtest.h>
 #include <fstream>
 
 #include "TapeSorter/TapeSorter.h"
 #include "Tape/TapeHandler.h"
 
-int main()
+
+TEST(SortTests, Sort1)
 {
     std::string testname("sort1.txt");
     std::ofstream file(testname);
@@ -20,5 +21,15 @@ int main()
 
     TapeSorter s(std::move(inp), std::move(outp), 1000);
     s.sort();
+
     }
+    int i=1;
+    std::ifstream ans(ansname);
+    int buf=0;
+    while(ans>>buf)
+    {
+        ASSERT_EQ(buf, i++);
+    }
+    ASSERT_EQ(i, 10);
+    
 }

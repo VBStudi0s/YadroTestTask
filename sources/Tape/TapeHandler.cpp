@@ -1,130 +1,126 @@
-#include <stdexcept>
+#include "Tape/TapeHandler.h"
 #include <fstream>
-#include <iostream>
+#include <stdexcept>
 #include <thread>
 
-#include "Tape/TapeHandler.h"
+// --- construction / destruction ---
 
-TapeHandler::TapeHandler(std::string file_path, std::string settings_path):
-    m_tape_file(file_path)
+TapeHandler::TapeHandler(const std::string& file_path,
+                         const std::string& settings_path)
+  : m_tape_file(file_path)
 {
-    m_pos = m_tape_data.begin();
-    
-    // settings reading
-    if(settings_path != "")
-    {
-        try
-        {
-            read_settings(settings_path);
-        }
-        catch(std::exception& e)
-        {
-            std::cerr<<e.what()<<"\nUsing default settings\n";
-        }
+    // load settings if provided
+    if (!settings_path.empty()) {
+        try { read_settings(settings_path); }
+        catch (...) {/* ignore, use defaults */}
     }
 
-    // reading data from the date
-    std::ifstream tape(m_tape_file);
-    if(tape.is_open())
-    {
-        int buf = 0;
-        while(tape>>buf)
-        {
-            m_tape_data.push_back(buf);
+    // load initial tape contents as valid cells
+    std::ifstream in(m_tape_file);
+    if (in) {
+        int v;
+        while (in >> v) {
+            m_tape_data.push_back(v);
+            ++m_valid_len;
         }
-        if(tape.fail() && !tape.eof())
+        if (in.fail() && !in.eof())
             throw std::runtime_error("Error while reading tape file");
     }
-    tape.close();
-
-    m_pos = m_tape_data.begin();
-}
-
-void TapeHandler::read_settings(const std::string&settings_path)
-{
-    std::ifstream setts(settings_path);
-    if(setts.is_open())
-    {
-        TapeSettings temp;
-        if(!(setts>>temp.write_delay>>temp.read_delay>>temp.move_delay &&
-            temp.write_delay >= 0 && temp.read_delay >= 0 && temp.move_delay >= 0))
-            throw std::runtime_error("Corrupted settings file data");
-        m_settings = temp;
-    }
-    else
-    {
-        throw std::runtime_error("Unable to open settings file");
+    // position at start of valid area (if any)
+    if (m_valid_len == 0) {
+        // empty tape: leave deque empty, pos_index 0
+        m_pos_index = 0;
+    } else {
+        m_pos_index = 0;
     }
 }
 
-int TapeHandler::read() const
-{
-    std::this_thread::sleep_for(std::chrono::milliseconds(m_settings.read_delay));
-    return *m_pos;
-}
-
-void TapeHandler::write(int data)
-{
-    std::this_thread::sleep_for(std::chrono::milliseconds(m_settings.write_delay));
-    if(m_tape_data.empty())
-    {
-        m_tape_data.emplace_back(data);
-        m_pos = m_tape_data.begin();
+TapeHandler::~TapeHandler() {
+    // write only valid cells back to file
+    std::ofstream out(m_tape_file);
+    if (!out) return;
+    for (size_t i = 0; i < m_valid_len; ++i) {
+        out << m_tape_data[i] << '\n';
     }
-    else
-        *m_pos = data;
 }
 
-void TapeHandler::left()
-{
-    if(m_pos == m_tape_data.begin())
+// --- settings loader ---
+
+void TapeHandler::read_settings(const std::string& path) {
+    std::ifstream in(path);
+    if (!in) throw std::runtime_error("Unable to open settings file");
+    TapeSettings tmp;
+    if (!(in >> tmp.write_delay
+           >> tmp.read_delay
+           >> tmp.move_delay)
+        || tmp.write_delay < 0
+        || tmp.read_delay  < 0
+        || tmp.move_delay  < 0)
     {
-        m_tape_data.emplace_front();
-        m_pos = m_tape_data.begin();
+        throw std::runtime_error("Corrupted settings data");
     }
-    else
-        --m_pos;
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(m_settings.move_delay));
+    m_settings = tmp;
 }
 
-void TapeHandler::right()
-{
-    auto temp_pos = m_pos;
-    if(++temp_pos == m_tape_data.end())
-    {
-        m_tape_data.emplace_back();
+// --- tape operations ---
+
+int TapeHandler::read() const {
+    if (m_pos_index >= m_valid_len)
+        throw std::out_of_range("Read beyond valid tape");
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(m_settings.read_delay));
+    return m_tape_data[m_pos_index];
+}
+
+void TapeHandler::write(int data) {
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(m_settings.write_delay));
+
+    // if writing beyond valid, extend valid area
+    if (m_pos_index >= m_valid_len) {
+        // ensure deque is large enough
+        if (m_pos_index >= m_tape_data.size())
+            m_tape_data.resize(m_pos_index + 1, 0);
+        m_valid_len = m_pos_index + 1;
     }
-    ++m_pos;
-    
-    std::this_thread::sleep_for(std::chrono::milliseconds(m_settings.move_delay));
+    m_tape_data[m_pos_index] = data;
 }
 
-bool TapeHandler::is_start() const
-{
-    return (m_pos == m_tape_data.begin()); 
-}
-
-bool TapeHandler::is_end() const
-{
-    auto temp_pos = m_pos;
-    return (++temp_pos == m_tape_data.end());
-}
-
-bool TapeHandler::is_empty() const
-{
-    return (m_tape_data.empty());
-}
-
-TapeHandler::~TapeHandler()
-{
-    std::ofstream tape(m_tape_file);
-    if(tape.is_open())
-    {
-        for(const auto& i: m_tape_data)
-        {
-            tape<<i<<' ';
-        }
-        tape.close();
+void TapeHandler::left() {
+    if (m_pos_index == 0) {
+        // extend at front: new blank cell becomes position 0
+        m_tape_data.push_front(0);
+        ++m_valid_len;
+        // head stays at new cell 0
+        m_pos_index = 0;
+    } else {
+        --m_pos_index;
     }
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(m_settings.move_delay));
+}
+
+void TapeHandler::right() {
+    // if moving past current deque, add blank
+    if (m_pos_index + 1 >= m_tape_data.size()) {
+        m_tape_data.push_back(0);
+    }
+    ++m_pos_index;
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(m_settings.move_delay));
+}
+
+// only consider valid cells for start/end
+
+bool TapeHandler::is_start() const {
+    return (m_valid_len > 0 && m_pos_index == 0);
+}
+
+bool TapeHandler::is_end() const {
+    return (m_valid_len > 0
+            && m_pos_index + 1 == m_valid_len);
+}
+
+bool TapeHandler::is_empty() const {
+    return (m_valid_len == 0);
 }
