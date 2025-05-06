@@ -1,5 +1,7 @@
 #include <stdexcept>
 #include <fstream>
+#include <iostream>
+#include <thread>
 
 #include "Tape/TapeHandler.h"
 
@@ -7,8 +9,21 @@ TapeHandler::TapeHandler(std::string file_path, std::string settings_path):
     m_tape_file(file_path)
 {
     m_pos = m_tape_data.begin();
-    // TODO: read settings
+    
+    // settings reading
+    if(settings_path != "")
+    {
+        try
+        {
+            read_settings(settings_path);
+        }
+        catch(std::exception& e)
+        {
+            std::cerr<<e.what()<<"\nUsing default settings\n";
+        }
+    }
 
+    // reading data from the date
     std::ifstream tape(m_tape_file);
     if(tape.is_open())
     {
@@ -25,15 +40,32 @@ TapeHandler::TapeHandler(std::string file_path, std::string settings_path):
     m_pos = m_tape_data.begin();
 }
 
+void TapeHandler::read_settings(const std::string&settings_path)
+{
+    std::ifstream setts(settings_path);
+    if(setts.is_open())
+    {
+        TapeSettings temp;
+        if(!(setts>>temp.write_delay>>temp.read_delay>>temp.move_delay &&
+            temp.write_delay >= 0 && temp.read_delay >= 0 && temp.move_delay >= 0))
+            throw std::runtime_error("Corrupted settings file data");
+        m_settings = temp;
+    }
+    else
+    {
+        throw std::runtime_error("Unable to open settings file");
+    }
+}
+
 int TapeHandler::read() const
 {
-    // TODO: add delay
+    std::this_thread::sleep_for(std::chrono::milliseconds(m_settings.read_delay));
     return *m_pos;
 }
 
 void TapeHandler::write(int data)
 {
-    // TODO: add delay
+    std::this_thread::sleep_for(std::chrono::milliseconds(m_settings.write_delay));
     if(m_tape_data.empty())
     {
         m_tape_data.emplace_back(data);
@@ -52,7 +84,8 @@ void TapeHandler::left()
     }
     else
         --m_pos;
-    // TODO: add delay
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(m_settings.move_delay));
 }
 
 void TapeHandler::right()
@@ -63,7 +96,8 @@ void TapeHandler::right()
         m_tape_data.emplace_back();
     }
     ++m_pos;
-    // TODO: add delay
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(m_settings.move_delay));
 }
 
 bool TapeHandler::is_start() const

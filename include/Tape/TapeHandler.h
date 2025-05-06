@@ -4,6 +4,7 @@
 #include <string>
 
 #include "Tape/ITape.h"
+#include "Tape/TapeSettings.h"
 
 /*
 * Class implementing ITape interface using typical files.
@@ -15,6 +16,10 @@ class TapeHandler: public ITape
     std::string m_tape_file;    // file name of corresponding tape file 
     std::list<int> m_tape_data;   // data of the tape
     std::list<int>::iterator m_pos;   // current position on the tape
+    TapeSettings m_settings;
+
+    void read_settings(const std::string& settings_path);
+
 public:
     // Receives paths to files corresponding to the tape and settings
     TapeHandler(std::string file_path, std::string settings_path = "");

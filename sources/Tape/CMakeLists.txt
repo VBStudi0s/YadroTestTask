@@ -9,6 +9,7 @@ include_directories(
 set(TAPE_HEADERS
     ${TAPE_INCLUDE_DIR}/Tape/ITape.h
     ${TAPE_INCLUDE_DIR}/Tape/TapeHandler.h
+    ${TAPE_INCLUDE_DIR}/Tape/TapeSettings.h
 )
 
 add_library(TapeLib OBJECT ${TAPE_SOURCES} ${TAPE_HEADERS})

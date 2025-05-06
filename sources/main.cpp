@@ -5,7 +5,7 @@
 int main()
 {
     std::cout<<"Hello, Yadro!\n";
-    TapeHandler th("./test.txt");
+    TapeHandler th("./test.txt", "settings.txt");
     std::cout<<th.is_empty()<<'\n';
     th.write(12);
     th.left();
