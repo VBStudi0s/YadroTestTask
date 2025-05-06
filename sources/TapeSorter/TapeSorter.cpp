@@ -27,46 +27,55 @@ std::vector<std::string> TapeSorter::create_sorted_runs()
 {
     std::vector<std::string> run_files;
     const size_t max_ints = m_memory_limit / sizeof(int);
+    if (max_ints == 0) throw std::invalid_argument("Memory limit too small");
     size_t run_index = 0;
 
-    while (!m_input->is_end() && !m_input->is_empty()) 
+    // rewind input to the very beginning
+    while (!m_input->is_start()) {
+        m_input->left();
+    }
+
+    // generate runs until the tape is exhausted
+    while (!m_input->is_empty()) 
     {
         std::vector<int> buffer;
         buffer.reserve(max_ints);
 
-        while (!m_input->is_end() && buffer.size() < max_ints) 
-        {
+        // 1) read the current cell
+        buffer.push_back(m_input->read());
+        // 2) read up to max_ints‑1 more, moving before each read
+        for (size_t cnt = 1; cnt < max_ints && !m_input->is_end(); ++cnt) {
+            m_input->right();
             buffer.push_back(m_input->read());
-            if(!m_input->is_end())
-                m_input->right();
         }
 
-
+        // sort the in‑memory run
         std::sort(buffer.begin(), buffer.end());
 
+        // write this run out to a fresh temp tape
         std::string run_path = temp_filename(run_index++);
         {
             TapeHandler run_tape(run_path);
-            for (int val : buffer) 
-            {
-                if (run_tape.is_empty()) 
-                {
-                    run_tape.write(val);
-                } 
-                else 
-                {
+            bool first = true;
+            for (int val : buffer) {
+                if (!first) {
                     run_tape.right();
-                    run_tape.write(val);
                 }
+                run_tape.write(val);
+                first = false;
             }
         }
-
         run_files.push_back(run_path);
-    }
 
+        // if we consumed to the very end of input, break
+        if (m_input->is_end()) break;
+        // otherwise advance one to start next run
+        m_input->right();
+    }
 
     return run_files;
 }
+
 
 void TapeSorter::merge_runs(const std::vector<std::string>& run_files) {
     struct TapeNode {

@@ -30,6 +30,6 @@ TEST(SortTests, Sort1)
     {
         ASSERT_EQ(buf, i++);
     }
-    ASSERT_EQ(i, 10);
+    ASSERT_EQ(i, 11);
     
 }
