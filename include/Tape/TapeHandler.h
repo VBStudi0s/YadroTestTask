@@ -1,52 +1,39 @@
 #pragma once
 
-#include <list>
+#include <deque>
 #include <string>
-
 #include "Tape/ITape.h"
-#include "Tape/TapeSettings.h"
+
+struct TapeSettings {
+    int write_delay = 0;
+    int read_delay = 0;
+    int move_delay = 0;
+};
 
 /*
-* Class implementing ITape interface using typical files.
-* Uses fstream to interact with file corresponding to tape.
-* Rewrites info to file after working with the tape.
-*/
-class TapeHandler: public ITape
-{
-    std::string m_tape_file;    // file name of corresponding tape file 
-    std::list<int> m_tape_data;   // data of the tape
-    std::list<int>::iterator m_pos;   // current position on the tape
-    TapeSettings m_settings;
+ * Implements ITape by emulating a tape with a deque.
+ * Supports automatic extension, but tracks valid length
+ * so that is_start()/is_end() reflect only written cells.
+ */
+class TapeHandler : public ITape {
+    std::string    m_tape_file;
+    std::deque<int> m_tape_data;    // all cells (valid + buffer)
+    size_t         m_pos_index{0};   // current head position
+    size_t         m_valid_len{0};   // number of valid (written) cells
+    TapeSettings   m_settings;
 
-    void read_settings(const std::string& settings_path);
+    void read_settings(const std::string& path);
 
 public:
-    // Receives paths to files corresponding to the tape and settings
-    TapeHandler(std::string file_path, std::string settings_path = "");
+    TapeHandler(const std::string& file_path,
+                const std::string& settings_path = "");
+    ~TapeHandler() override;
 
-    // Reads data on current position
-    virtual int read() const override;
-
-    // Writes data on current position
-    virtual void write(int data) override;
-
-    // Moves one position left
-    // Adds new node if moving off the boundaries
-    virtual void left() override;
-
-    // Moves one position right
-    // Adds new node if moving off the boundaries
-    virtual void right() override;
-
-    // Returns true if it is start of the tape
-    virtual bool is_start() const override;
-
-    // Returns true if it is end of the tape
-    virtual bool is_end() const override;
-
-    // Returns true if tape in empty
-    virtual bool is_empty() const override;
-
-    // Writes data to the tape file
-    ~TapeHandler();
+    int  read() const override;
+    void write(int data) override;
+    void left() override;
+    void right() override;
+    bool is_start() const override;
+    bool is_end()   const override;
+    bool is_empty() const override;
 };

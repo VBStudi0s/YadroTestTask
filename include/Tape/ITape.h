@@ -33,4 +33,6 @@ public:
 
     // Returns true if tape in empty
     virtual bool is_empty() const = 0;
+
+    virtual ~ITape() = default;
 };

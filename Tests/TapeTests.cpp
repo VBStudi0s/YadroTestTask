@@ -16,7 +16,7 @@ TEST(TapeTests, Read)
 {
     std::ofstream file("read");
     for(int i=0; i<10; i++)
-        file<<i<<' ';
+        file<<i<<'\n';
     file.close();
     TapeHandler tape("read");
     ASSERT_FALSE(tape.is_empty());

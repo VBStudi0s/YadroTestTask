@@ -16,4 +16,4 @@ ctest -V
 
 # Deleting temp dir
 cd ../
-rm -r temp
+# rm -r temp

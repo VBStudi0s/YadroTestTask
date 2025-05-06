@@ -22,6 +22,6 @@ add_executable(main ${SOURCE_DIR}/main.cpp)
 
 target_include_directories(main PRIVATE ${INCLUDE_DIRECTORIES})
 
-target_link_libraries(main PRIVATE TapeLib)
+target_link_libraries(main PRIVATE TapeLib SorterLib)
 
 add_subdirectory(${TESTS_DIR})
