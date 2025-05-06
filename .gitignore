@@ -1,3 +1,6 @@
 main
 temp
 temp/
+.vscode
+.vscode/
+test.txt
