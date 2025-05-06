@@ -1,7 +1,6 @@
 #pragma once
 
-#include <vector>
-#include <fstream>
+#include <list>
 #include <string>
 
 #include "Tape/ITape.h"
@@ -9,16 +8,13 @@
 /*
 * Class implementing ITape interface using typical files.
 * Uses fstream to interact with file corresponding to tape.
-* Implements RAII idioma, creating fstream object in constructor 
-* and destroying it in destructor.
-* It is consideted that one tape can be read or written
-* only by one entity.
+* Rewrites info to file after working with the tape.
 */
 class TapeHandler: public ITape
 {
-    std::fstream m_tape;    // fstream with corresponding tape file 
-    std::vector<int> m_tape_data;   // data of the tape
-    size_t m_pos = 0;   // current position on the tape
+    std::string m_tape_file;    // file name of corresponding tape file 
+    std::list<int> m_tape_data;   // data of the tape
+    std::list<int>::iterator m_pos;   // current position on the tape
 public:
     // Receives paths to files corresponding to the tape and settings
     TapeHandler(std::string file_path, std::string settings_path = "");
@@ -30,9 +26,11 @@ public:
     virtual void write(int data) override;
 
     // Moves one position left
+    // Adds new node if moving off the boundaries
     virtual void left() override;
 
     // Moves one position right
+    // Adds new node if moving off the boundaries
     virtual void right() override;
 
     // Returns true if it is start of the tape

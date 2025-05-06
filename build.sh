@@ -12,6 +12,8 @@ cmake -B./ -S../
 # Building
 make
 
+ctest -V
+
 # Deleting temp dir
 cd ../
 rm -r temp
